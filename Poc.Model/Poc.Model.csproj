@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GeoJSON.Net" Version="1.4.1" />
+        <PackageReference Include="NetTopologySuite" Version="2.5.0" />        
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\SourceData.Model\SourceData.Model.csproj" />
+      <ProjectReference Include="..\Utils\Utils.csproj" />
+    </ItemGroup>    
+
+</Project>
