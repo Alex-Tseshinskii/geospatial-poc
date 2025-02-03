@@ -13,6 +13,7 @@ using SourceData;
 using SourceData.Helpers;
 using SourceData.Model;
 using Utils.Benchmark;
+using Utils.Buffer;
 using Utils.JsonNet;
 
 namespace Calculation.Mongo;
@@ -90,15 +91,30 @@ internal class Geofence2dSphereStore : IGeofenceStore
         var name = feature.Properties[options.CenterNameProperty].ToString() ?? "<Noname>";
         var region = feature.Properties[options.CenterRegionProperty].ToString() ?? "<Noname>";
 
-        await _mongoDb.GeofencesCircleSphere.InsertOneAsync(new GeofenceCircle2dSphere()
+        /*await _mongoDb.GeofencesCircleSphere.InsertOneAsync(new GeofenceCircle2dSphere()
         {
             Name = name,
             Region = region,
             Center = Geospatial2dSphere.Point(point),
             Radius = RadiusGenerator.Deterministic(name, options)
+        });*/
+        var polygon = CircleConverter.BuildCircleBuffer(new NetTopologySuite.Geometries.Point(point.Coordinates.Longitude, point.Coordinates.Latitude),
+            RadiusGenerator.Deterministic(name, options));
+
+        await _mongoDb.GeofencesPolygonSphere.InsertOneAsync(new GeofencePolygon2dSphere()
+        {
+            Name = name,
+            Fence = Geospatial2dSphere.Polygon(GetPolygonCoordinates(polygon)),
         });
 
         _logger.LogTrace("Circle center '{CenterName}' added to Mongo DB", name);
+    }
+
+    private GeoJson2DGeographicCoordinates[] GetPolygonCoordinates(NetTopologySuite.Geometries.Polygon polygon)
+    {
+        return polygon.Shell.Coordinates
+            .Select(c => new GeoJson2DGeographicCoordinates(c.X, c.Y))
+            .ToArray();
     }
 
     public Task<SearchResult> FindPolygonsAsync(ILocatedItem item) =>
@@ -113,7 +129,8 @@ internal class Geofence2dSphereStore : IGeofenceStore
     }
 
     public Task<SearchResult> FindCirclesAsync(ILocatedItem item) =>
-        BenchmarkDatabaseSearchAsync(item, GeoFindNearAsync);
+        // BenchmarkDatabaseSearchAsync(item, GeoFindNearAsync);
+        BenchmarkDatabaseSearchAsync(item, GeoFindIntersectAsync);
 
     private static async Task<SearchResult> BenchmarkDatabaseSearchAsync(ILocatedItem item,
         Func<GeoJsonPoint<GeoJson2DGeographicCoordinates>, Task<GeofenceDto[]>> databaseSearchFunc)
